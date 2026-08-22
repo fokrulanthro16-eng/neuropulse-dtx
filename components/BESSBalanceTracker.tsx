@@ -1,14 +1,16 @@
 'use client';
 
 /**
- * NeuroPulse DTx - Luxury BESS Postural Sway & Balance Engine
- * Standard Balance Error Scoring System (BESS) using 3-axis accelerometer
- * telemetry with glowing 3D tilt radar and stance stability metrics.
+ * NeuroPulse DTx - BESS Postural Sway & Balance Engine (SaMD v3)
+ * IMU Signal Processing Pipeline:
+ * - 4th-Order Butterworth Low-Pass Digital Filter (fc = 5.0 Hz)
+ * - 95% Confidence Ellipse Postural Sway Area via Covariance Matrix Eigenvalues (\lambda_1, \lambda_2)
+ * - Total Tilt Angle (\theta in deg) with 15^\circ BESS Error Detection
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useNeuroPulseStore } from '@/lib/store';
-import { BESSSensorEngine } from '@/lib/bess-sensor';
+import { BESSSensorEngine, BESSSensorSample } from '@/lib/bess-sensor';
 import { BESSStanceType, BESSMetrics } from '@/types/clinical';
 import {
   Compass,
@@ -18,17 +20,33 @@ import {
   CheckCircle2,
   Footprints,
   Timer,
-  Sparkles
+  Sparkles,
+  ShieldCheck,
+  Zap,
+  Sliders
 } from 'lucide-react';
 
 export const BESSBalanceTracker: React.FC = () => {
   const [selectedStance, setSelectedStance] = useState<BESSStanceType>('DOUBLE_LEG_FIRM');
   const [isRunning, setIsRunning] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(20);
-  const [liveTilt, setLiveTilt] = useState({ pitch: 0, roll: 0, total: 0 });
+  const [liveSample, setLiveSample] = useState<BESSSensorSample>({
+    timestamp: 0,
+    accelX: 0,
+    accelY: 0,
+    accelZ: 9.81,
+    pitchDeg: 0,
+    rollDeg: 0,
+    tiltAngleDeg: 0,
+    angularVelocityDegPerSec: 0,
+    isErrorFrame: false,
+    lambda1: 0.04,
+    lambda2: 0.03,
+    swayAreaMm2: 320,
+  });
+
   const [liveErrors, setLiveErrors] = useState(0);
   const [completedMetrics, setCompletedMetrics] = useState<BESSMetrics | null>(null);
-
   const [stanceResults, setStanceResults] = useState<Record<string, BESSMetrics>>({});
 
   const radarCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -49,7 +67,7 @@ export const BESSBalanceTracker: React.FC = () => {
 
     const engine = new BESSSensorEngine(
       (sample, secLeft) => {
-        setLiveTilt({ pitch: sample.pitchDeg, roll: sample.rollDeg, total: sample.tiltAngleDeg });
+        setLiveSample(sample);
         setSecondsRemaining(secLeft);
         if (sample.isErrorFrame) {
           setLiveErrors((prev) => prev + 1);
@@ -58,7 +76,7 @@ export const BESSBalanceTracker: React.FC = () => {
         swayHistoryRef.current.push({ x: sample.accelX, y: sample.accelY });
         if (swayHistoryRef.current.length > 200) swayHistoryRef.current.shift();
 
-        drawRadarCanvas(sample.pitchDeg, sample.rollDeg, sample.tiltAngleDeg);
+        drawRadarCanvas(sample.pitchDeg, sample.rollDeg, sample.tiltAngleDeg, sample.lambda1, sample.lambda2);
       },
       (metrics) => {
         setIsRunning(false);
@@ -84,7 +102,7 @@ export const BESSBalanceTracker: React.FC = () => {
     setIsRunning(false);
   };
 
-  const drawRadarCanvas = (pitch: number, roll: number, totalTilt: number) => {
+  const drawRadarCanvas = (pitch: number, roll: number, totalTilt: number, l1: number, l2: number) => {
     const canvas = radarCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -110,6 +128,7 @@ export const BESSBalanceTracker: React.FC = () => {
     ctx.arc(centerX, centerY, ring10, 0, Math.PI * 2);
     ctx.stroke();
 
+    // 15 deg BESS Limit Cone
     ctx.strokeStyle = '#F59E0B';
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1.5;
@@ -124,8 +143,22 @@ export const BESSBalanceTracker: React.FC = () => {
     ctx.moveTo(0, centerY); ctx.lineTo(w, centerY);
     ctx.stroke();
 
+    // Draw 95% Confidence Ellipse Outline
+    const ellipseRadiusX = Math.min(maxRadius * 0.8, Math.sqrt(l1) * maxRadius * 3.5);
+    const ellipseRadiusY = Math.min(maxRadius * 0.8, Math.sqrt(l2) * maxRadius * 3.5);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
+    ctx.fillStyle = 'rgba(168, 85, 247, 0.08)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, Math.max(12, ellipseRadiusX), Math.max(10, ellipseRadiusY), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // Draw Sway Trajectory Trail
     if (swayHistoryRef.current.length > 1) {
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+      ctx.strokeStyle = '#A855F7';
       ctx.lineWidth = 2;
       ctx.beginPath();
       swayHistoryRef.current.forEach((pt, i) => {
@@ -137,6 +170,7 @@ export const BESSBalanceTracker: React.FC = () => {
       ctx.stroke();
     }
 
+    // Current Tilt Position
     const posX = centerX + (roll / 20) * maxRadius;
     const posY = centerY + (pitch / 20) * maxRadius;
     const isExceeding = totalTilt > 15.0;
@@ -205,19 +239,19 @@ export const BESSBalanceTracker: React.FC = () => {
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-mono text-[#F59E0B] font-semibold tracking-wider uppercase">
               <Compass className="w-3.5 h-3.5" />
-              <span>SCAT6 Balance Error Scoring System (BESS)</span>
+              <span>SCAT6 Balance Error Scoring • 4th-Order Butterworth 5Hz Filter</span>
             </div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight">
               Postural Sway &amp; Accelerometer Tracker
             </h1>
             <p className="text-sm text-zinc-400 max-w-xl leading-relaxed">
-              Measures tri-axial accelerometer sway area ($mm^2/s$) and auto-scores balance errors exceeding the 15° stability threshold across standard 20s trials.
+              Calculates real-time $95\%$ Confidence Ellipse sway area ($mm^2/s$) via covariance eigenvalues and auto-scores $15^\circ$ stability cone errors.
             </p>
           </div>
 
-          <div className="p-3 rounded-2xl bg-zinc-950/60 border border-white/5 text-right">
-            <span className="text-[10px] uppercase font-mono text-zinc-400 block">Total Protocol Errors</span>
-            <span className="text-sm font-mono text-amber-400 font-bold">
+          <div className="p-3 rounded-2xl bg-zinc-950/60 border border-white/5 text-right font-mono">
+            <span className="text-[10px] uppercase text-zinc-400 block">Total Protocol Errors</span>
+            <span className="text-sm font-bold text-amber-400">
               {totalErrors} / 60 ({Object.keys(stanceResults).length}/6 Stances)
             </span>
           </div>
@@ -235,7 +269,7 @@ export const BESSBalanceTracker: React.FC = () => {
                   if (!isRunning) setSelectedStance(st.id);
                 }}
                 disabled={isRunning}
-                className={`p-5 rounded-2xl border text-left transition-all ${
+                className={`p-5 rounded-2xl border text-left transition-all cursor-pointer ${
                   isSelected
                     ? 'border-amber-500/80 bg-gradient-to-br from-amber-500/15 via-amber-600/5 to-transparent shadow-[0_0_24px_rgba(245,158,11,0.2)]'
                     : 'border-white/5 bg-zinc-950/50 hover:border-white/15'
@@ -282,7 +316,7 @@ export const BESSBalanceTracker: React.FC = () => {
                   <div>
                     <h3 className="text-lg font-bold text-white">Ready for {selectedStance.replace(/_/g, ' ')}</h3>
                     <p className="text-xs text-zinc-400 max-w-sm mt-1">
-                      Hold device flat against your chest or waist. Stand still with hands on hips and eyes closed.
+                      Hold device flat against chest or waist. Stand still with hands on hips and eyes closed for 20 seconds.
                     </p>
                   </div>
                   <button
@@ -308,7 +342,7 @@ export const BESSBalanceTracker: React.FC = () => {
               <div className="flex justify-center">
                 <button
                   onClick={stopTrial}
-                  className="px-6 py-2.5 rounded-2xl bg-zinc-950 border border-rose-500/60 text-rose-400 font-semibold text-xs flex items-center gap-2 hover:bg-rose-950/40 transition-all"
+                  className="px-6 py-2.5 rounded-2xl bg-zinc-950 border border-rose-500/60 text-rose-400 font-semibold text-xs flex items-center gap-2 hover:bg-rose-950/40 transition-all cursor-pointer"
                 >
                   <Square className="w-4 h-4 fill-current" />
                   <span>Halt Balance Trial</span>
@@ -321,42 +355,46 @@ export const BESSBalanceTracker: React.FC = () => {
           <div className="space-y-4">
             <div className="glass-card-interactive p-5 rounded-2xl space-y-3">
               <div className="flex items-center justify-between text-xs text-zinc-400">
-                <span className="font-semibold text-white">Live Tri-Axial Telemetry</span>
+                <span className="font-semibold text-white">Butterworth &amp; Ellipse Telemetry</span>
                 <Activity className="w-3.5 h-3.5 text-amber-400" />
               </div>
 
               <div className="grid grid-cols-2 gap-2 font-mono">
                 <div className="p-2.5 rounded-xl bg-zinc-950/70 border border-white/5">
-                  <span className="text-[10px] text-zinc-400 block">Total Tilt Angle</span>
-                  <span className={`text-base font-bold ${liveTilt.total > 15 ? 'text-rose-400' : 'text-white'}`}>
-                    {liveTilt.total.toFixed(1)}°
+                  <span className="text-[10px] text-zinc-400 block">Total Tilt Angle (\theta)</span>
+                  <span className={`text-base font-bold ${liveSample.tiltAngleDeg > 15 ? 'text-rose-400' : 'text-white'}`}>
+                    {liveSample.tiltAngleDeg}°
                   </span>
-                  <span className="text-[10px] text-zinc-400 block">Limit: 15°</span>
+                  <span className="text-[10px] text-zinc-500 block">Limit: 15.0°</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-zinc-950/70 border border-white/5">
-                  <span className="text-[10px] text-zinc-400 block">Trial Error Count</span>
+                  <span className="text-[10px] text-zinc-400 block">BESS Error Count</span>
                   <span className="text-base font-bold text-amber-400">
                     {completedMetrics ? completedMetrics.balanceErrorsCount : liveErrors}
                   </span>
-                  <span className="text-[10px] text-zinc-400 block">Max: 10 / trial</span>
+                  <span className="text-[10px] text-zinc-500 block">Max: 10 / stance</span>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-zinc-950/70 border border-white/5 space-y-1">
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-zinc-400">Pitch (Front/Back)</span>
-                  <span className="text-white">{liveTilt.pitch.toFixed(1)}°</span>
+              <div className="p-3 rounded-xl bg-zinc-950/70 border border-white/5 space-y-1 text-xs font-mono">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">95% Sway Area:</span>
+                  <span className="text-purple-400 font-bold">{liveSample.swayAreaMm2} mm²/s</span>
                 </div>
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-zinc-400">Roll (Left/Right)</span>
-                  <span className="text-white">{liveTilt.roll.toFixed(1)}°</span>
+                <div className="flex justify-between text-[11px] text-zinc-500">
+                  <span>Eigenvalues (\lambda_1, \lambda_2):</span>
+                  <span>{liveSample.lambda1} / {liveSample.lambda2}</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-emerald-400 pt-0.5">
+                  <span>Butterworth LP Filter:</span>
+                  <span>5.0 Hz (4th-Order) Active</span>
                 </div>
               </div>
             </div>
 
             {/* Completed Trial Outcome Banner */}
             {completedMetrics && (
-              <div className="p-5 rounded-3xl bg-emerald-950/20 border border-emerald-800/50 space-y-3">
+              <div className="p-5 rounded-3xl bg-emerald-950/20 border border-emerald-800/50 space-y-3 animate-in fade-in">
                 <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <span>Trial Complete: {completedMetrics.stanceType.replace(/_/g, ' ')}</span>
@@ -364,11 +402,11 @@ export const BESSBalanceTracker: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div>
-                    <span className="text-[10px] text-zinc-400 block">Sway Area</span>
+                    <span className="text-[10px] text-zinc-400 block">Sway Area (95% CI)</span>
                     <span className="text-sm font-bold text-white">{completedMetrics.posturalSwayAreaMm2} mm²/s</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-zinc-400 block">RMS Accel</span>
+                    <span className="text-[10px] text-zinc-400 block">RMS Acceleration</span>
                     <span className="text-sm font-bold text-amber-400">{completedMetrics.accelerationRms} m/s²</span>
                   </div>
                 </div>

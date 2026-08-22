@@ -1,14 +1,17 @@
 'use client';
 
 /**
- * NeuroPulse DTx - Luxury Health Voice Clinical Logger
- * Behance-inspired Digital Health aesthetic with glowing circular mic hub,
- * real-time 590nm amber soundwave, and 3 luxury biometric metric widgets.
+ * NeuroPulse DTx - Luxury Health Voice Clinical Logger (SaMD v3)
+ * DSP Pipeline:
+ * - Dual-Threshold VAD (STE + ZCR)
+ * - 500ms Dynamic Background Noise Floor Auto-Calibration
+ * - Spectral Centroid (Hz) and 85% Spectral Roll-off
+ * - Exact Unvoiced Silence Duration Distribution (P_r)
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useNeuroPulseStore } from '@/lib/store';
-import { AcousticBiomarkerAnalyzer } from '@/lib/audio-biomarkers';
+import { AcousticBiomarkerAnalyzer, AudioDspFrame } from '@/lib/audio-biomarkers';
 import { VocalBiomarkerMetrics, SCAT6Assessment } from '@/types/clinical';
 import {
   Mic,
@@ -19,7 +22,10 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
-  Radio
+  ShieldCheck,
+  Radio,
+  Sliders,
+  Volume2
 } from 'lucide-react';
 
 export const VoiceClinicalLogger: React.FC = () => {
@@ -35,9 +41,21 @@ export const VoiceClinicalLogger: React.FC = () => {
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [liveRms, setLiveRms] = useState(0);
-  const [liveFatigue, setLiveFatigue] = useState(22);
-  const [livePauseRatio, setLivePauseRatio] = useState(0.18);
+  const [liveDsp, setLiveDsp] = useState<AudioDspFrame>({
+    timestamp: 0,
+    rms: 0.045,
+    ste: 0.002,
+    zcr: 0.08,
+    spectralCentroidHz: 1350,
+    spectralRollOffHz: 2600,
+    isVoiced: false,
+    noiseFloorRms: 0.012,
+    pauseRatio: 0.22,
+    hesitationIndexSec: 0.24,
+    currentFatigue: 24,
+    waveform: new Uint8Array(128),
+  });
+
   const [narrativeText, setNarrativeText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [clinicalFeedback, setClinicalFeedback] = useState<string | null>(null);
@@ -60,9 +78,7 @@ export const VoiceClinicalLogger: React.FC = () => {
   const startVoiceLogging = async () => {
     setClinicalFeedback(null);
     const analyzer = new AcousticBiomarkerAnalyzer((frameData) => {
-      setLiveRms(frameData.rms);
-      setLiveFatigue(frameData.currentFatigue);
-      setLivePauseRatio(frameData.pauseRatio);
+      setLiveDsp(frameData);
       drawWaveform(frameData.waveform);
     });
 
@@ -152,7 +168,7 @@ export const VoiceClinicalLogger: React.FC = () => {
           },
           cognitiveToleranceIndex: Math.max(10, 100 - evalResult.pcssTotalScore),
           pacingComplianceScore: 94,
-          providerNotes: `Voice triage logged. Total PCSS Score: ${evalResult.pcssTotalScore}/132. Cognitive Exertion Cap: ${evalResult.buffaloPacingExertionCap}%.`,
+          providerNotes: `Voice triage logged. Total PCSS Score: ${evalResult.pcssTotalScore}/132. Buffalo Exertion Cap: ${evalResult.buffaloPacingExertionCap}%.`,
         };
 
         addAssessment(newAssessment);
@@ -206,9 +222,8 @@ export const VoiceClinicalLogger: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Luxury Glass Hero Card */}
       <div className="glass-panel-elevated rounded-3xl p-6 sm:p-8 md:p-10 space-y-8 relative overflow-hidden">
-        {/* Subtle Ambient Gold Glow Top Center */}
+        {/* Ambient Gold Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-amber-500/10 blur-3xl pointer-events-none" />
 
         {/* Section Header */}
@@ -216,23 +231,21 @@ export const VoiceClinicalLogger: React.FC = () => {
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-mono text-[#F59E0B] font-semibold tracking-wider uppercase">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Acoustic Voice Biomarker Triage</span>
+              <span>Acoustic Vocal DSP &amp; Short-Time Energy (STE)</span>
             </div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight">
               Daily Cognitive Voice Check-in
             </h1>
             <p className="text-sm text-zinc-400 max-w-xl leading-relaxed">
-              Tap the golden microphone and describe your current headache, vision clarity, fatigue, or sensitivity. Our DSP parses vocal pause latency in real-time.
+              Tap the golden microphone and describe your current symptoms. Dual-threshold VAD computes unvoiced silence distribution ($P_r$) and spectral centroid in real time.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-zinc-950/60 border border-white/5 text-right">
-              <span className="text-[10px] uppercase font-mono text-zinc-400 block">Baseline Latency</span>
-              <span className="text-sm font-mono font-bold text-amber-400">
-                {profile.baseline.vocalHesitationBaseline}s / pause
-              </span>
-            </div>
+          <div className="p-3 rounded-2xl bg-zinc-950/60 border border-white/5 text-right font-mono">
+            <span className="text-[10px] uppercase text-zinc-400 block">Baseline Latency</span>
+            <span className="text-sm font-bold text-amber-400">
+              {profile.baseline.vocalHesitationBaseline}s / pause
+            </span>
           </div>
         </div>
 
@@ -274,10 +287,12 @@ export const VoiceClinicalLogger: React.FC = () => {
 
           {/* Recording Timer & Audio Canvas */}
           <div className="w-full max-w-md space-y-3 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-950/70 border border-white/5">
-              <span className={`w-2 h-2 rounded-full ${isRecording ? 'bg-amber-400 animate-ping' : 'bg-zinc-600'}`} />
-              <span className="font-mono text-xs text-zinc-300">
-                {isRecording ? `Recording: ${recordingDuration}s • Latency Analyzing` : 'Ready to record voice sample'}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-950/70 border border-white/5 font-mono text-xs text-zinc-300">
+              <span className={`w-2 h-2 rounded-full ${isRecording ? (liveDsp.isVoiced ? 'bg-emerald-400 animate-ping' : 'bg-amber-400') : 'bg-zinc-600'}`} />
+              <span>
+                {isRecording
+                  ? `Recording: ${recordingDuration}s • VAD: ${liveDsp.isVoiced ? 'VOICED' : 'UNVOICED'}`
+                  : 'DSP Pipeline Ready (48kHz)'}
               </span>
             </div>
 
@@ -293,78 +308,97 @@ export const VoiceClinicalLogger: React.FC = () => {
           </div>
         </div>
 
-        {/* Refined 3-Card Biometric Readout Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+        {/* 4-Card Mathematical DSP Readout Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
           {/* Card 1: Pause Ratio */}
           <div className="glass-card-interactive p-5 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
                 <Clock className="w-4 h-4 text-amber-400" />
-                <span>Speech Pause Ratio</span>
+                <span>Pause Ratio (P_r)</span>
               </div>
               <span className="font-mono text-xs text-amber-400 font-bold">
-                {(livePauseRatio * 100).toFixed(0)}%
+                {(liveDsp.pauseRatio * 100).toFixed(0)}%
               </span>
             </div>
-
             <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-300 rounded-full"
-                style={{ width: `${Math.min(100, livePauseRatio * 100)}%` }}
+                style={{ width: `${Math.min(100, liveDsp.pauseRatio * 100)}%` }}
               />
             </div>
             <span className="text-[11px] text-zinc-400 block font-mono">
-              Word-finding search latency metric
+              Hesitation: {liveDsp.hesitationIndexSec}s / pause
             </span>
           </div>
 
-          {/* Card 2: Vocal RMS Energy */}
+          {/* Card 2: Spectral Centroid */}
           <div className="glass-card-interactive p-5 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
-                <Activity className="w-4 h-4 text-sky-400" />
-                <span>Vocal RMS Stability</span>
+                <Sliders className="w-4 h-4 text-sky-400" />
+                <span>Spectral Centroid</span>
               </div>
               <span className="font-mono text-xs text-sky-400 font-bold">
-                {(liveRms * 100).toFixed(1)} dB
+                {liveDsp.spectralCentroidHz} Hz
               </span>
             </div>
-
             <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-sky-500 to-sky-400 transition-all duration-200 rounded-full"
-                style={{ width: `${Math.min(100, liveRms * 800)}%` }}
+                style={{ width: `${Math.min(100, (liveDsp.spectralCentroidHz / 3000) * 100)}%` }}
               />
             </div>
             <span className="text-[11px] text-zinc-400 block font-mono">
-              Amplitude tremor & perturbation
+              Roll-off: {liveDsp.spectralRollOffHz} Hz
             </span>
           </div>
 
-          {/* Card 3: Live Cognitive Fatigue */}
+          {/* Card 3: RMS Energy */}
+          <div className="glass-card-interactive p-5 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
+                <Volume2 className="w-4 h-4 text-purple-400" />
+                <span>Short-Time Energy</span>
+              </div>
+              <span className="font-mono text-xs text-purple-400 font-bold">
+                {(liveDsp.rms * 100).toFixed(1)} dB
+              </span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-purple-400 transition-all duration-200 rounded-full"
+                style={{ width: `${Math.min(100, liveDsp.rms * 700)}%` }}
+              />
+            </div>
+            <span className="text-[11px] text-zinc-400 block font-mono">
+              Noise floor: {(liveDsp.noiseFloorRms * 100).toFixed(1)} dB
+            </span>
+          </div>
+
+          {/* Card 4: Live Cognitive Fatigue */}
           <div className="glass-card-interactive p-5 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
                 <Zap className="w-4 h-4 text-emerald-400" />
-                <span>Cognitive Fatigue Index</span>
+                <span>Fatigue Index</span>
               </div>
-              <span className={`font-mono text-xs font-bold ${liveFatigue > 60 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                {liveFatigue} / 100
+              <span className={`font-mono text-xs font-bold ${liveDsp.currentFatigue > 60 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {liveDsp.currentFatigue} / 100
               </span>
             </div>
-
             <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
               <div
                 className={`h-full transition-all duration-300 rounded-full ${
-                  liveFatigue > 60
+                  liveDsp.currentFatigue > 60
                     ? 'bg-gradient-to-r from-rose-500 to-rose-400'
                     : 'bg-gradient-to-r from-emerald-500 to-emerald-400'
                 }`}
-                style={{ width: `${liveFatigue}%` }}
+                style={{ width: `${liveDsp.currentFatigue}%` }}
               />
             </div>
             <span className="text-[11px] text-zinc-400 block font-mono">
-              {liveFatigue > 60 ? 'Cognitive overload detected' : 'Sub-threshold stable range'}
+              {liveDsp.currentFatigue > 60 ? 'Cognitive overload' : 'Sub-threshold stable'}
             </span>
           </div>
         </div>
@@ -378,7 +412,7 @@ export const VoiceClinicalLogger: React.FC = () => {
             </div>
             <button
               onClick={() => setActiveTab('trajectory')}
-              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center gap-1 transition-all"
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
             >
               <span>View Trajectory</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -386,7 +420,7 @@ export const VoiceClinicalLogger: React.FC = () => {
           </div>
         )}
 
-        {/* Refined Transcript Input & Quick Scenario Chips */}
+        {/* Transcript Input & Quick Scenario Chips */}
         <div className="space-y-3 pt-2 border-t border-white/5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-zinc-300">
@@ -403,7 +437,6 @@ export const VoiceClinicalLogger: React.FC = () => {
             className="w-full rounded-2xl bg-zinc-950/70 border border-white/10 p-4 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/40 transition-all"
           />
 
-          {/* Quick Scenario Chips */}
           <div className="flex flex-wrap gap-2 pt-1">
             <span className="text-[11px] text-zinc-400 flex items-center self-center mr-1">
               Sample Prompts:
@@ -412,7 +445,7 @@ export const VoiceClinicalLogger: React.FC = () => {
               onClick={() =>
                 setNarrativeText('Feeling improved today. Headache is down to 2/6, but still have slight light sensitivity and brain fog when reading.')
               }
-              className="px-3 py-1 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/5 text-xs text-zinc-300 transition-all hover:border-amber-500/30"
+              className="px-3 py-1 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/5 text-xs text-zinc-300 transition-all hover:border-amber-500/30 cursor-pointer"
             >
               Sub-acute Mild (PCSS ~15)
             </button>
@@ -420,7 +453,7 @@ export const VoiceClinicalLogger: React.FC = () => {
               onClick={() =>
                 setNarrativeText('Severe headache 5/6, intense light sensitivity, feeling in a fog, cannot concentrate and feeling very exhausted.')
               }
-              className="px-3 py-1 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/5 text-xs text-zinc-300 transition-all hover:border-amber-500/30"
+              className="px-3 py-1 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/5 text-xs text-zinc-300 transition-all hover:border-amber-500/30 cursor-pointer"
             >
               Acute Severe (PCSS ~55)
             </button>
@@ -428,7 +461,7 @@ export const VoiceClinicalLogger: React.FC = () => {
               onClick={() =>
                 setNarrativeText('I notice one pupil is bigger than the other and I have thrown up twice with severe neck pain.')
               }
-              className="px-3 py-1 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/80 text-xs text-rose-300 font-semibold transition-all"
+              className="px-3 py-1 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/80 text-xs text-rose-300 font-semibold transition-all cursor-pointer"
             >
               Emergency Red Flag Trigger
             </button>
@@ -438,7 +471,7 @@ export const VoiceClinicalLogger: React.FC = () => {
             <button
               onClick={() => submitForClinicalTriage(narrativeText)}
               disabled={isProcessing}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-sm transition-all shadow-md active:scale-95"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-sm transition-all shadow-md active:scale-95 cursor-pointer"
             >
               {isProcessing ? 'Analyzing Clinical Vectors...' : 'Submit Written Check-in for SCAT6 Triage'}
             </button>
