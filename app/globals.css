@@ -20,7 +20,7 @@
 }
 
 .filter-low-lux {
-  filter: brightness(0.82) contrast(0.96);
+  filter: brightness(0.92) contrast(0.98);
 }
 
 .filter-true-oled {
@@ -45,11 +45,10 @@
   font-size: 115%;
 }
 
-/* Ambient 10% Sub-50 Lux Dimming */
+/* Ambient Safe Photophobia Dimming - Clamped to ≥88% Brightness for Full Legibility */
 .ambient-dimmed {
-  filter: brightness(0.1) contrast(1.15) !important;
-  transition: filter 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-  background-color: #000000 !important;
+  filter: brightness(0.90) contrast(1.02);
+  transition: filter 0.4s ease;
 }
 
 /* Base Body Styles */

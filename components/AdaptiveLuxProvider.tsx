@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * NeuroPulse DTx - Luxury Adaptive Lux Provider & Photophobia Shield
- * Floating glassmorphism quick control panel and 10% sub-50 lux dimming shield.
+ * NeuroPulse DTx - Luxury Adaptive Lux Provider & Photophobia Shield (SaMD v3)
+ * Non-blocking ambient photophobia shield clamped to >=88% legibility.
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNeuroPulseStore } from '@/lib/store';
-import { Sun, Moon, Eye, Contrast, Type, X } from 'lucide-react';
+import { Sun, Moon, Eye, Contrast, Type, X, ShieldCheck } from 'lucide-react';
 
 interface AdaptiveLuxContextType {
   isDimmed: boolean;
@@ -73,31 +73,21 @@ export const AdaptiveLuxProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }}
     >
       <div className="relative min-h-screen bg-[#090A0F] text-[#F4F4F5]">
-        {/* Fullscreen Dimming Overlay */}
+        {/* Non-Blocking Subtle Ambient Dimming Notification Strip */}
         {isAmbientDimmed && (
-          <div
-            onClick={() => setIsAmbientDimmed(false)}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 cursor-pointer p-6 backdrop-blur-md transition-all"
-            role="button"
-            tabIndex={0}
-            aria-label="Screen dimmed for photophobia protection. Tap anywhere to wake screen."
-          >
-            <div className="text-center space-y-4 max-w-md">
-              <div className="inline-flex p-4 rounded-full bg-amber-500/10 border border-amber-500/30 animate-pulse text-amber-400">
-                <Moon className="w-10 h-10" />
-              </div>
-              <h2 className="text-2xl font-bold text-amber-300 tracking-wide">
-                Ambient Photophobia Shield Active
-              </h2>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Display attenuated to 10% sub-50 lux to prevent ocular fatigue and cranial pressure flares. Voice biomarkers and audio pacing continue in the background.
-              </p>
-              <div className="pt-4">
-                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-amber-500/40 bg-amber-950/40 text-xs text-amber-400 font-mono">
-                  Tap or click anywhere to wake display
-                </span>
-              </div>
+          <div className="no-print sticky top-0 z-50 bg-amber-950/80 border-b border-amber-500/40 px-4 py-2 text-xs flex items-center justify-between text-amber-200 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <Moon className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span>
+                <strong>Photophobia Screen Shield Active:</strong> Display attenuated to 88% brightness with 590nm amber filtration.
+              </span>
             </div>
+            <button
+              onClick={() => setIsAmbientDimmed(false)}
+              className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold font-mono text-[11px] transition-all cursor-pointer"
+            >
+              Restore Full Brightness
+            </button>
           </div>
         )}
 
@@ -114,7 +104,7 @@ export const AdaptiveLuxProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 </div>
                 <button
                   onClick={() => setShowLuxPanel(false)}
-                  className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                  className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
                   aria-label="Close Lux Panel"
                 >
                   <X className="w-4 h-4" />
@@ -127,7 +117,7 @@ export const AdaptiveLuxProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 <div className="grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => setLuxSettings({ photophobiaFilter: 'DEEP_AMBER_590NM' })}
-                    className={`px-2.5 py-2 text-xs rounded-xl border font-medium text-center transition-all ${
+                    className={`px-2.5 py-2 text-xs rounded-xl border font-medium text-center transition-all cursor-pointer ${
                       luxSettings.photophobiaFilter === 'DEEP_AMBER_590NM'
                         ? 'border-amber-500 bg-amber-500/20 text-amber-300 font-bold'
                         : 'border-white/5 bg-zinc-950/60 text-zinc-400 hover:text-zinc-200'
@@ -137,7 +127,7 @@ export const AdaptiveLuxProvider: React.FC<{ children: React.ReactNode }> = ({ c
                   </button>
                   <button
                     onClick={() => setLuxSettings({ photophobiaFilter: 'LOW_LUX_MONOCHROME' })}
-                    className={`px-2.5 py-2 text-xs rounded-xl border font-medium text-center transition-all ${
+                    className={`px-2.5 py-2 text-xs rounded-xl border font-medium text-center transition-all cursor-pointer ${
                       luxSettings.photophobiaFilter === 'LOW_LUX_MONOCHROME'
                         ? 'border-amber-500 bg-amber-500/20 text-amber-300 font-bold'
                         : 'border-white/5 bg-zinc-950/60 text-zinc-400 hover:text-zinc-200'
@@ -147,7 +137,7 @@ export const AdaptiveLuxProvider: React.FC<{ children: React.ReactNode }> = ({ c
                   </button>
                   <button
                     onClick={() => setLuxSettings({ photophobiaFilter: 'TRUE_OLED_BLACK' })}
-                    className={`px-2.5 py-2 text-xs rounded-xl border font-medium text-center transition-all ${
+                    className={`px-2.5 py-2 text-xs rounded-xl border font-medium text-center transition-all cursor-pointer ${
                       luxSettings.photophobiaFilter === 'TRUE_OLED_BLACK'
                         ? 'border-amber-500 bg-amber-500/20 text-amber-300 font-bold'
                         : 'border-white/5 bg-zinc-950/60 text-zinc-400 hover:text-zinc-200'
@@ -184,39 +174,27 @@ export const AdaptiveLuxProvider: React.FC<{ children: React.ReactNode }> = ({ c
                     className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
                   />
                 </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-xs text-zinc-300 flex items-center gap-2">
-                    <Moon className="w-3.5 h-3.5 text-amber-400" />
-                    Auto-Dim Voice Sessions
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={luxSettings.autoDimmingEnabled}
-                    onChange={(e) => setLuxSettings({ autoDimmingEnabled: e.target.checked })}
-                    className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
-                  />
-                </div>
               </div>
 
-              {/* Instant 10% Dimmer Button */}
+              {/* Instant Photophobia Dimmer Button */}
               <button
-                onClick={() => setIsAmbientDimmed(true)}
-                className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                onClick={() => setIsAmbientDimmed(!isAmbientDimmed)}
+                className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <Moon className="w-4 h-4" />
-                <span>Dim Screen Now (10% Sub-50 Lux)</span>
+                <span>{isAmbientDimmed ? 'Restore Full Screen Brightness' : 'Enable 88% Photophobia Shield'}</span>
               </button>
             </div>
           )}
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsAmbientDimmed(true)}
+              onClick={() => setIsAmbientDimmed(!isAmbientDimmed)}
               className="px-3.5 py-2.5 rounded-full glass-panel-elevated hover:bg-zinc-800 text-xs font-medium text-amber-400 flex items-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
-              title="Instant Screen Dimmer"
+              title="Toggle Photophobia Shield"
             >
               <Moon className="w-4 h-4" />
-              <span>Dim 10%</span>
+              <span>{isAmbientDimmed ? 'Full Lux' : 'Dim Lux'}</span>
             </button>
 
             <button

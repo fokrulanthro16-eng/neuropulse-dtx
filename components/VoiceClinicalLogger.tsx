@@ -7,6 +7,7 @@
  * - 500ms Dynamic Background Noise Floor Auto-Calibration
  * - Spectral Centroid (Hz) and 85% Spectral Roll-off
  * - Exact Unvoiced Silence Duration Distribution (P_r)
+ * - Safe Photophobia Pacing (zero screen blackouts)
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -33,7 +34,6 @@ export const VoiceClinicalLogger: React.FC = () => {
     addAssessment,
     setLatestVocalMetrics,
     setActiveRedFlagAlert,
-    luxSettings,
     setIsAmbientDimmed,
     setActiveTab,
     profile
@@ -89,12 +89,6 @@ export const VoiceClinicalLogger: React.FC = () => {
       setIsRecording(true);
       setRecordingDuration(0);
 
-      if (luxSettings.autoDimmingEnabled) {
-        setTimeout(() => {
-          setIsAmbientDimmed(true);
-        }, 2200);
-      }
-
       timerIntervalRef.current = setInterval(() => {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
@@ -111,14 +105,14 @@ export const VoiceClinicalLogger: React.FC = () => {
 
     const metrics = analyzerRef.current.stop();
     setIsRecording(false);
-    setIsAmbientDimmed(false);
+    setIsAmbientDimmed(false); // Guarantee full screen visibility
 
     setLatestVocalMetrics(metrics);
 
     const effectiveNarrative =
       narrativeText.trim().length > 0
         ? narrativeText
-        : `Patient reports moderate throbbing headache rated 3/6, photophobia and difficulty concentrating on screen tasks. Intermittent mental fog. No emesis or neck stiffness.`;
+        : `Patient reports mild headache rated 2/6 with slight sensitivity to light and feeling foggy when concentrating. No emesis, no seizures, no focal weakness.`;
 
     await submitForClinicalTriage(effectiveNarrative, metrics);
   };
@@ -140,8 +134,11 @@ export const VoiceClinicalLogger: React.FC = () => {
       if (data.success && data.evaluation) {
         const evalResult = data.evaluation;
 
-        if (evalResult.hasRedFlags && evalResult.redFlags.length > 0) {
+        // ONLY trigger Red Flag alert if there is a verified affirmative emergency finding
+        if (evalResult.hasRedFlags && evalResult.redFlags && evalResult.redFlags.length > 0) {
           setActiveRedFlagAlert(evalResult.redFlags[0]);
+        } else {
+          setActiveRedFlagAlert(null);
         }
 
         const daysPostInjury = Math.max(
@@ -432,7 +429,7 @@ export const VoiceClinicalLogger: React.FC = () => {
           <textarea
             value={narrativeText}
             onChange={(e) => setNarrativeText(e.target.value)}
-            placeholder="Describe symptoms (e.g., 'Headache rated 3/6, slight dizziness when standing, eyes feel strained looking at screen...')"
+            placeholder="Describe symptoms (e.g., 'Headache rated 2/6, slight dizziness when standing, eyes feel strained looking at screen...')"
             rows={3}
             className="w-full rounded-2xl bg-zinc-950/70 border border-white/10 p-4 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/40 transition-all"
           />
@@ -443,7 +440,7 @@ export const VoiceClinicalLogger: React.FC = () => {
             </span>
             <button
               onClick={() =>
-                setNarrativeText('Feeling improved today. Headache is down to 2/6, but still have slight light sensitivity and brain fog when reading.')
+                setNarrativeText('Feeling improved today. Headache is down to 2/6, but still have slight light sensitivity and brain fog when reading. No emesis or seizures.')
               }
               className="px-3 py-1 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/5 text-xs text-zinc-300 transition-all hover:border-amber-500/30 cursor-pointer"
             >
@@ -459,11 +456,11 @@ export const VoiceClinicalLogger: React.FC = () => {
             </button>
             <button
               onClick={() =>
-                setNarrativeText('I notice one pupil is bigger than the other and I have thrown up twice with severe neck pain.')
+                setNarrativeText('I notice one pupil is bigger than the other and I have thrown up repeatedly with acute seizure convulsions.')
               }
               className="px-3 py-1 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/80 text-xs text-rose-300 font-semibold transition-all cursor-pointer"
             >
-              Emergency Red Flag Trigger
+              Emergency Red Flag Trigger (Acute)
             </button>
           </div>
 

@@ -1,13 +1,14 @@
 'use client';
 
 /**
- * NeuroPulse DTx - Luxury SCAT6 Emergency Red-Flag Alert Modal
- * High-urgency accessible clinical dialog with instant emergency dispatch triggers.
+ * NeuroPulse DTx - Luxury SCAT6 Emergency Red-Flag Alert Modal (SaMD v3)
+ * High-urgency accessible clinical dialog with instant emergency dispatch triggers
+ * and reliable dismissal buttons.
  */
 
 import React from 'react';
 import { useNeuroPulseStore } from '@/lib/store';
-import { AlertOctagon, PhoneCall, ShieldAlert, X } from 'lucide-react';
+import { AlertOctagon, PhoneCall, ShieldAlert, X, ArrowLeft } from 'lucide-react';
 
 export const EmergencyRedFlagModal: React.FC = () => {
   const { activeRedFlagAlert, setActiveRedFlagAlert, profile } = useNeuroPulseStore();
@@ -15,7 +16,14 @@ export const EmergencyRedFlagModal: React.FC = () => {
   if (!activeRedFlagAlert) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          setActiveRedFlagAlert(null);
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div className="relative w-full max-w-xl rounded-3xl bg-[#140809] border-2 border-rose-500/80 shadow-[0_0_60px_rgba(244,63,94,0.35)] p-6 md:p-8 space-y-6 text-white">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-rose-500/20 pb-4">
@@ -34,7 +42,7 @@ export const EmergencyRedFlagModal: React.FC = () => {
           </div>
           <button
             onClick={() => setActiveRedFlagAlert(null)}
-            className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white"
+            className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white cursor-pointer"
             aria-label="Dismiss Alert"
           >
             <X className="w-5 h-5" />
@@ -59,7 +67,7 @@ export const EmergencyRedFlagModal: React.FC = () => {
         <div className="space-y-3">
           <a
             href="tel:911"
-            className="w-full py-4 px-6 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-rose-950 transition-all active:scale-95"
+            className="w-full py-4 px-6 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-rose-950 transition-all active:scale-95 cursor-pointer"
           >
             <PhoneCall className="w-6 h-6 animate-bounce" />
             <span>Call 911 / Emergency Services Now</span>
@@ -68,7 +76,7 @@ export const EmergencyRedFlagModal: React.FC = () => {
           {profile.emergencyContact && profile.emergencyContact.phone && (
             <a
               href={`tel:${profile.emergencyContact.phone}`}
-              className="w-full py-3.5 px-6 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-semibold text-sm flex items-center justify-between transition-all"
+              className="w-full py-3.5 px-6 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-semibold text-sm flex items-center justify-between transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <PhoneCall className="w-4 h-4 text-amber-400" />
@@ -77,6 +85,15 @@ export const EmergencyRedFlagModal: React.FC = () => {
               <span className="text-xs font-mono text-amber-400">{profile.emergencyContact.phone}</span>
             </a>
           )}
+
+          {/* Dismiss & Return to Safe Dashboard Button */}
+          <button
+            onClick={() => setActiveRedFlagAlert(null)}
+            className="w-full py-3 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-zinc-300 font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Dismiss / Return to Clinical Dashboard</span>
+          </button>
         </div>
 
         {/* Instructions */}

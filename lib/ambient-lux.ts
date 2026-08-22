@@ -96,33 +96,30 @@ export class AmbientLuxEngine {
     // Linear Kelvin mapping: Lux ≤ 30 -> 1800K, Lux ≥ 400 -> 3200K
     const kelvin = Math.round(1800 + Math.min(1.0, Math.max(0, (lux - 20) / 380)) * 1400);
 
-    // Calculate overlay color matrix based on color temperature
-    // 1800K: Rich warm amber rgba(245, 158, 11, 0.22)
-    // 2400K: Golden sunset rgba(229, 169, 60, 0.14)
-    // 3200K: Warm OLED neutral rgba(217, 119, 6, 0.06)
-    const alpha = Number((0.24 - ((kelvin - 1800) / 1400) * 0.18).toFixed(3));
+    // Calculate subtle non-darkening overlay (alpha 0.02 to 0.05)
+    const alpha = Number((0.05 - ((kelvin - 1800) / 1400) * 0.03).toFixed(3));
     const overlayRgba = `rgba(245, 158, 11, ${alpha})`;
 
-    // Recommended lux mode & screen dim percentage
+    // Recommended lux mode & screen dim percentage (clamped to >= 88% brightness)
     let recommendedLuxMode = '590nm Deep Amber';
-    let screenDim = 100;
+    let screenDim = 92;
     let photophobiaStress = 15;
 
     if (lux < 40) {
       recommendedLuxMode = 'Sub-30 Lux Candle Shield (1800K)';
-      screenDim = 25;
+      screenDim = 88;
       photophobiaStress = 10;
     } else if (lux < 100) {
       recommendedLuxMode = 'Sub-50 Lux Clinical Amber (2200K)';
-      screenDim = 50;
+      screenDim = 90;
       photophobiaStress = 25;
     } else if (lux < 300) {
       recommendedLuxMode = 'Warm Golden OLED (2700K)';
-      screenDim = 75;
+      screenDim = 95;
       photophobiaStress = 55;
     } else {
       recommendedLuxMode = 'Bright Ambient Filtration (3200K)';
-      screenDim = 90;
+      screenDim = 98;
       photophobiaStress = 80;
     }
 
