@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" width="100%" height="100%">
+  <defs>
+    <radialGradient id="vomsBg" cx="50%" cy="30%" r="90%">
+      <stop offset="0%" stop-color="#141824" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#08090E" stop-opacity="0.98"/>
+    </radialGradient>
+    <filter id="amberGlow">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#F59E0B" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="360" rx="24" fill="url(#vomsBg)" stroke="#27272A" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <g transform="translate(35, 35)">
+    <circle cx="10" cy="10" r="5" fill="#38BDF8"/>
+    <text x="24" y="14" font-family="-apple-system, sans-serif" font-size="16" font-weight="700" fill="#FFFFFF">
+      VOMS Oculomotor &amp; Saccadic Eye-Tracking Suite
+    </text>
+    <text x="24" y="32" font-family="ui-monospace, monospace" font-size="11" fill="#A1A1AA">
+      Protocol: SCAT6 VOMS • Saccades, Smooth Pursuit &amp; NPC Convergence
+    </text>
+  </g>
+
+  <!-- Eye Tracking Arena Box -->
+  <g transform="translate(35, 80)">
+    <rect width="480" height="245" rx="16" fill="#040508" stroke="#1F2028" stroke-width="1"/>
+    
+    <!-- Coordinate Grid -->
+    <line x1="240" y1="0" x2="240" y2="245" stroke="#1A1B23" stroke-width="1"/>
+    <line x1="0" y1="122" x2="480" y2="122" stroke="#1A1B23" stroke-width="1"/>
+    <circle cx="240" cy="122" r="60" fill="none" stroke="#1A1B23" stroke-width="1" stroke-dasharray="3 3"/>
+    <circle cx="240" cy="122" r="100" fill="none" stroke="#1A1B23" stroke-width="1" stroke-dasharray="3 3"/>
+
+    <!-- Saccadic Target Track (Amber Dot) -->
+    <circle cx="340" cy="122" r="12" fill="#F59E0B" filter="url(#amberGlow)"/>
+    <circle cx="340" cy="122" r="4" fill="#FFFFFF"/>
+
+    <!-- Gaze Estimation Crosshair (Cyan) -->
+    <circle cx="332" cy="126" r="8" fill="none" stroke="#38BDF8" stroke-width="2"/>
+    <line x1="324" y1="126" x2="340" y2="126" stroke="#38BDF8" stroke-width="1"/>
+    <line x1="332" y1="118" x2="332" y2="134" stroke="#38BDF8" stroke-width="1"/>
+
+    <!-- Offset Lag Vector -->
+    <line x1="340" y1="122" x2="332" y2="126" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="2 2"/>
+
+    <!-- Status Pill -->
+    <rect x="20" y="205" width="140" height="24" rx="12" fill="#12131A" stroke="#27272A" stroke-width="1"/>
+    <circle cx="32" cy="217" r="3.5" fill="#10B981"/>
+    <text x="42" y="221" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#FFFFFF">PUPIL LOCKED (30 FPS)</text>
+  </g>
+
+  <!-- Right Telemetry Panel -->
+  <g transform="translate(535, 80)">
+    <!-- Card 1: Saccadic Latency -->
+    <rect x="0" y="0" width="230" height="74" rx="14" fill="#12131A" stroke="#27272A" stroke-width="1"/>
+    <text x="16" y="24" font-family="-apple-system, sans-serif" font-size="11" font-weight="600" fill="#A1A1AA">Saccadic Latency</text>
+    <text x="16" y="52" font-family="ui-monospace, monospace" font-size="22" font-weight="800" fill="#F59E0B">218 ms</text>
+    <text x="115" y="52" font-family="ui-monospace, monospace" font-size="10" fill="#10B981">Norm: 180-250ms</text>
+
+    <!-- Card 2: Fixation Stability -->
+    <rect x="0" y="85" width="230" height="74" rx="14" fill="#12131A" stroke="#27272A" stroke-width="1"/>
+    <text x="16" y="109" font-family="-apple-system, sans-serif" font-size="11" font-weight="600" fill="#A1A1AA">Gaze Stability</text>
+    <text x="16" y="137" font-family="ui-monospace, monospace" font-size="22" font-weight="800" fill="#38BDF8">89.4%</text>
+    <text x="115" y="137" font-family="ui-monospace, monospace" font-size="10" fill="#10B981">&gt;80% target</text>
+
+    <!-- Card 3: NPC Break Distance -->
+    <rect x="0" y="170" width="230" height="75" rx="14" fill="#12131A" stroke="#27272A" stroke-width="1"/>
+    <text x="16" y="194" font-family="-apple-system, sans-serif" font-size="11" font-weight="600" fill="#A1A1AA">Near Point Convergence</text>
+    <text x="16" y="222" font-family="ui-monospace, monospace" font-size="22" font-weight="800" fill="#10B981">4.5 cm</text>
+    <text x="115" y="222" font-family="ui-monospace, monospace" font-size="10" fill="#10B981">Normal (≤ 5cm)</text>
+  </g>
+</svg>
