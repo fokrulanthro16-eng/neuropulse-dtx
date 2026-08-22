@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-deep: #090A0F;
+  --bg-surface: #0E1017;
+  --bg-card: rgba(20, 22, 31, 0.7);
+  --border-glass: rgba(255, 255, 255, 0.07);
+  --border-amber-glow: rgba(245, 158, 11, 0.25);
+  --amber-primary: #F59E0B;
+  --amber-clinical: #E5A93C;
+  --text-main: #F4F4F5;
+  --text-muted: #A1A1AA;
+}
+
+/* Photophobia-Safe Spectrum Themes */
+.filter-amber-590nm {
+  --amber-primary: #E5A93C;
+}
+
+.filter-low-lux {
+  filter: brightness(0.82) contrast(0.96);
+}
+
+.filter-true-oled {
+  --bg-deep: #000000;
+  --bg-surface: #080808;
+  --bg-card: rgba(12, 12, 14, 0.85);
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  --text-main: #FFFFFF;
+  --text-muted: #D4D4D8;
+  --border-glass: rgba(255, 255, 255, 0.25);
+}
+
+.high-contrast button,
+.high-contrast input {
+  outline: 2px solid #F59E0B !important;
+}
+
+.large-typography {
+  font-size: 115%;
+}
+
+/* Ambient 10% Sub-50 Lux Dimming */
+.ambient-dimmed {
+  filter: brightness(0.1) contrast(1.15) !important;
+  transition: filter 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: #000000 !important;
+}
+
+/* Base Body Styles */
+body {
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(18, 20, 29, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-panel-elevated {
+  background: rgba(24, 27, 40, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 30px -10px rgba(245, 158, 11, 0.08);
+}
+
+.glass-card-interactive {
+  background: rgba(20, 23, 34, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card-interactive:hover {
+  background: rgba(28, 32, 48, 0.75);
+  border-color: rgba(245, 158, 11, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.6), 0 0 20px -5px rgba(245, 158, 11, 0.12);
+}
+
+/* Subtle Glowing Background Gradients */
+.bg-radial-ambient {
+  background: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 60%);
+}
+
+.bg-radial-mesh {
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.04) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(16, 185, 129, 0.03) 0px, transparent 50%);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090A0F;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272A;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #F59E0B;
+}
+
+/* Print Stylesheet for Provider Reports */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .clinical-card {
+    border: 1px solid #E4E4E7 !important;
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+}
